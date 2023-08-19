@@ -47,3 +47,29 @@ func (apiConfig *apiConfig) handlerGetFeedFollows(w http.ResponseWriter, r *http
 
 	respondWithJSON(w, 200, databaseFeedFollowsToFeedFollows(feedFollows))
 }
+
+func (apiConfig *apiConfig) handlerDeleteFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
+	type parameters struct {
+		FeedID uuid.UUID `json:"feed_id"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, 400, fmt.Sprintf("Error parsing JSON: %s", err))
+		return
+	}
+
+	apiConfig.DB.DeleteFeedFollow(r.Context(), database.DeleteFeedFollowParams{
+		FeedID: params.FeedID,
+		UserID: user.ID,
+	})
+
+	type unfollowResponse struct {
+		Message string `json:"message"`
+	}
+
+	respondWithJSON(w, 200, unfollowResponse{
+		Message: "Successfully unfollow feed",
+	})
+}
