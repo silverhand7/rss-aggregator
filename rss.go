@@ -13,7 +13,7 @@ type RSSFeed struct {
 		Link        string    `xml:"link"`
 		Description string    `xml:"description"`
 		Language    string    `xml:"language"`
-		Item        []RSSItem `xml:"item"`
+		Items       []RSSItem `xml:"item"`
 	} `xml:"channel"`
 }
 
@@ -24,6 +24,7 @@ type RSSItem struct {
 	PubDate     string `xml:"pubDate"`
 }
 
+// get the data from URL (scrapping the data)
 func urlToFeed(url string) (RSSFeed, error) {
 	httpClient := http.Client{
 		Timeout: 10 * time.Second,
