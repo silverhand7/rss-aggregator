@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/silverhand7/go-rss-aggregator/internal/database"
 )
 
@@ -62,7 +65,35 @@ func scrapeFeed(db *database.Queries, feed database.Feed, waitGroup *sync.WaitGr
 	}
 
 	for _, item := range rssFeed.Channel.Items {
-		log.Println("Found post", item.Title, "on feed", feed.Name)
+		description := sql.NullString{}
+		if item.Description != "" {
+			description.String = item.Description
+			description.Valid = true
+		}
+		// because the time is using RFC1123Z format
+		publishedAt, err := time.Parse(time.RFC1123Z, item.PubDate)
+		if err != nil {
+			log.Printf("couldn't parse date %v with err %v", item.PubDate, err)
+		}
+		_, err = db.CreatePost(context.Background(), database.CreatePostParams{
+			ID:          uuid.New(),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+			Title:       item.Title,
+			Description: description,
+			PublishedAt: sql.NullTime{
+				Time:  publishedAt,
+				Valid: true,
+			},
+			Url:    item.Link,
+			FeedID: feed.ID,
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key") {
+				continue
+			}
+			log.Println("failed to create post: ", err)
+		}
 	}
 
 	log.Printf("Feed %s collected, %v posts found", feed.Name, len(rssFeed.Channel.Items))
